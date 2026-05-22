@@ -6,15 +6,20 @@
 import os
 from dotenv import load_dotenv
 
-# 加载项目根目录的 .env 文件
-# 路径: DealSim/.env (相对于 backend/app/config.py)
+# 加载项目根目录的 .env 和 .env.local 文件
+# 路径: DealSim/.env 和 DealSim/.env.local (相对于 backend/app/config.py)
 project_root_env = os.path.join(os.path.dirname(__file__), '../../.env')
+project_root_env_local = os.path.join(os.path.dirname(__file__), '../../.env.local')
 
 if os.path.exists(project_root_env):
     load_dotenv(project_root_env, override=True)
-else:
-    # 如果根目录没有 .env，尝试加载环境变量（用于生产环境）
-    load_dotenv(override=True)
+
+if os.path.exists(project_root_env_local):
+    load_dotenv(project_root_env_local, override=True)
+
+# 兜底加载系统环境变量
+load_dotenv(override=True)
+
 
 
 class Config:
