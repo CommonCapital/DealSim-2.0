@@ -3,12 +3,16 @@ LLM客户端封装
 统一使用OpenAI格式调用
 """
 
+import os
 import json
 import re
+import time
+import asyncio
 from typing import Optional, Dict, Any, List
 from openai import OpenAI, AsyncOpenAI
 
 from ..config import Config
+
 
 
 class LLMClient:
@@ -18,23 +22,28 @@ class LLMClient:
         self,
         api_key: Optional[str] = None,
         base_url: Optional[str] = None,
-        model: Optional[str] = None
+        model: Optional[str] = None,
+        timeout: Optional[float] = None
     ):
         self.api_key = api_key or Config.LLM_API_KEY
         self.base_url = base_url or Config.LLM_BASE_URL
         self.model = model or Config.LLM_MODEL_NAME
+        self.timeout = timeout or Config.LLM_TIMEOUT
         
         if not self.api_key:
             raise ValueError("LLM_API_KEY 未配置")
         
         self.client = OpenAI(
             api_key=self.api_key,
-            base_url=self.base_url
+            base_url=self.base_url,
+            timeout=self.timeout
         )
         self.async_client = AsyncOpenAI(
             api_key=self.api_key,
-            base_url=self.base_url
+            base_url=self.base_url,
+            timeout=self.timeout
         )
+
     
     def chat(
         self,
@@ -65,7 +74,23 @@ class LLMClient:
         if response_format:
             kwargs["response_format"] = response_format
         
-        response = self.client.chat.completions.create(**kwargs)
+        max_retries = 3
+        backoff = 2.0
+        response = None
+        for attempt in range(max_retries):
+            try:
+                response = self.client.chat.completions.create(**kwargs)
+                break
+            except Exception as e:
+                if attempt < max_retries - 1:
+                    from ..utils.logger import get_logger
+                    logger = get_logger('dealsim.llm')
+                    logger.warning(f"LLM chat attempt {attempt+1}/{max_retries} failed: {e}. Retrying in {backoff}s...")
+                    time.sleep(backoff)
+                    backoff *= 2.0
+                else:
+                    raise e
+
         
         # 检查是否因为长度限制而截断
         finish_reason = response.choices[0].finish_reason
@@ -132,7 +157,23 @@ class LLMClient:
         if response_format:
             kwargs["response_format"] = response_format
         
-        response = await self.async_client.chat.completions.create(**kwargs)
+        max_retries = 3
+        backoff = 2.0
+        response = None
+        for attempt in range(max_retries):
+            try:
+                response = await self.async_client.chat.completions.create(**kwargs)
+                break
+            except Exception as e:
+                if attempt < max_retries - 1:
+                    from ..utils.logger import get_logger
+                    logger = get_logger('dealsim.llm')
+                    logger.warning(f"LLM async chat attempt {attempt+1}/{max_retries} failed: {e}. Retrying in {backoff}s...")
+                    await asyncio.sleep(backoff)
+                    backoff *= 2.0
+                else:
+                    raise e
+
         content = response.choices[0].message.content
         content = re.sub(r'<think>[\s\S]*?</think>', '', content).strip()
         return content

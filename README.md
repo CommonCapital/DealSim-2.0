@@ -23,6 +23,16 @@ The gap in modern finance is not information; it is **structured adversarial scr
 
 ---
 
+## 🚀 DealSim 2.0: 100% Local & Cost-Effective (No Zep Cloud Required)
+
+Unlike the original version of DealSim which heavily relied on **Zep Cloud** (a paid, external GraphRAG and entity extraction service costing up to $350+/month), **DealSim 2.0 is fully local out-of-the-box**:
+- **Zero Cloud Memory Dependencies**: All knowledge graph ontology generation, claim parsing, entity extraction, and temporal relationship mapping are processed locally via custom drop-in local client architecture (`LocalZep`).
+- **Substantial Cost Savings**: Completely eliminates the need for expensive Zep Cloud subscriptions and massive external API bills.
+- **Privacy & Performance**: Sensitive investment memoranda, financial sheets, and pitch decks never leave your machine, running with extremely low offline latency.
+
+---
+
+
 ### 💡 Statement in Plain English
 
 *DealSim* is a software tool that stress-tests investment deals before they face real investors.
@@ -91,6 +101,5 @@ This software is open source.
 See the [LICENSE](LICENSE) file for the full legal text.
 
 ---
-© 2026 Nursan Omarov. DealSim - Institutional Deal Pressure-Testing Engine.
-# DealSim-for-light-weight-deployment
-# DealSim-2.0
+© 2026 Nursan Omarov. DealSim 2.0 - Institutional Deal Pressure-Testing Engine.
+

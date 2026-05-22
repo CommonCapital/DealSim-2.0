@@ -222,14 +222,128 @@ def generate_ontology():
             additional_context=additional_context if additional_context else None
         )
         
+        # Define Fixed Claim Graph Ontology for PE/VC Investment Claims
+        fixed_ontology = {
+            "entity_types": [
+                {
+                    "name": "Claim",
+                    "description": "A claim or assertion made in the investment documents.",
+                    "attributes": [
+                        {"name": "content", "description": "The specific claim description"},
+                        {"name": "importance", "description": "Importance level from 1 to 10"},
+                        {"name": "source", "description": "Document source page or section"},
+                        {"name": "category", "description": "Category (Market, Financial, Team, Product, Governance)"}
+                    ]
+                },
+                {
+                    "name": "Evidence",
+                    "description": "Supporting data, facts, or sources for a claim.",
+                    "attributes": [
+                        {"name": "content", "description": "The specific evidence or fact description"},
+                        {"name": "importance", "description": "Importance level from 1 to 10"},
+                        {"name": "source", "description": "Document source page or section"},
+                        {"name": "category", "description": "Category (Market, Financial, Team, Product, Governance)"}
+                    ]
+                },
+                {
+                    "name": "Assumption",
+                    "description": "An underlying assumption or premise.",
+                    "attributes": [
+                        {"name": "content", "description": "The specific assumption description"},
+                        {"name": "importance", "description": "Importance level from 1 to 10"},
+                        {"name": "source", "description": "Document source page or section"},
+                        {"name": "category", "description": "Category (Market, Financial, Team, Product, Governance)"}
+                    ]
+                },
+                {
+                    "name": "Risk",
+                    "description": "A risk or challenge to a claim or the overall investment.",
+                    "attributes": [
+                        {"name": "content", "description": "The specific risk description"},
+                        {"name": "importance", "description": "Importance level from 1 to 10"},
+                        {"name": "source", "description": "Document source page or section"},
+                        {"name": "category", "description": "Category (Market, Financial, Team, Product, Governance)"}
+                    ]
+                },
+                {
+                    "name": "Dependency",
+                    "description": "A dependency that must be met for a claim to hold.",
+                    "attributes": [
+                        {"name": "content", "description": "The specific dependency description"},
+                        {"name": "importance", "description": "Importance level from 1 to 10"},
+                        {"name": "source", "description": "Document source page or section"},
+                        {"name": "category", "description": "Category (Market, Financial, Team, Product, Governance)"}
+                    ]
+                }
+            ],
+            "edge_types": [
+                {
+                    "name": "SUPPORTS",
+                    "description": "Evidence or claims supporting another claim.",
+                    "attributes": [
+                        {"name": "reason", "description": "Logic/reasoning for this connection"}
+                    ],
+                    "source_targets": [
+                        {"source": "Evidence", "target": "Claim"},
+                        {"source": "Claim", "target": "Claim"}
+                    ]
+                },
+                {
+                    "name": "REQUIRES",
+                    "description": "A claim requiring an assumption or a dependency.",
+                    "attributes": [
+                        {"name": "reason", "description": "Logic/reasoning for this connection"}
+                    ],
+                    "source_targets": [
+                        {"source": "Claim", "target": "Assumption"},
+                        {"source": "Claim", "target": "Dependency"}
+                    ]
+                },
+                {
+                    "name": "CONTRADICTS",
+                    "description": "A contradiction, tension, or risk challenging another claim.",
+                    "attributes": [
+                        {"name": "reason", "description": "Logic/reasoning for this connection"}
+                    ],
+                    "source_targets": [
+                        {"source": "Claim", "target": "Claim"},
+                        {"source": "Claim", "target": "Risk"},
+                        {"source": "Evidence", "target": "Risk"},
+                        {"source": "Assumption", "target": "Risk"}
+                    ]
+                },
+                {
+                    "name": "UNSUBSTANTIATED",
+                    "description": "A relationship showing that a claim is currently unsubstantiated by evidence.",
+                    "attributes": [
+                        {"name": "reason", "description": "Logic/reasoning for this connection"}
+                    ],
+                    "source_targets": [
+                        {"source": "Claim", "target": "Claim"}
+                    ]
+                }
+            ]
+        }
+        
+        # Populate relation_types for the frontend Process.vue display
+        relation_types = []
+        for edge in fixed_ontology["edge_types"]:
+            for st in edge.get("source_targets", []):
+                relation_types.append({
+                    "name": edge["name"],
+                    "source_type": st["source"],
+                    "target_type": st["target"]
+                })
+        
         # 保存本体到项目
-        entity_count = len(ontology.get("entity_types", []))
-        edge_count = len(ontology.get("edge_types", []))
-        logger.info(f"本体生成完成: {entity_count} 个实体类型, {edge_count} 个关系类型")
+        entity_count = len(fixed_ontology["entity_types"])
+        edge_count = len(fixed_ontology["edge_types"])
+        logger.info(f"本体生成完成: {entity_count} 个实体类型, {edge_count} 个关系类型, {len(relation_types)} 个具体映射")
         
         project.ontology = {
-            "entity_types": ontology.get("entity_types", []),
-            "edge_types": ontology.get("edge_types", [])
+            "entity_types": fixed_ontology["entity_types"],
+            "edge_types": fixed_ontology["edge_types"],
+            "relation_types": relation_types
         }
         project.analysis_summary = ontology.get("analysis_summary", "")
         project.status = ProjectStatus.ONTOLOGY_GENERATED

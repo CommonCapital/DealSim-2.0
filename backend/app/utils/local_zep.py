@@ -7,6 +7,7 @@ import os
 import json
 import uuid
 import time
+import threading
 from typing import List, Dict, Any, Optional
 from datetime import datetime
 
@@ -15,6 +16,16 @@ from ..utils.llm_client import LLMClient
 from ..utils.logger import get_logger
 
 logger = get_logger('dealsim.local_zep')
+
+_graph_locks = {}
+_locks_lock = threading.Lock()
+
+def _get_graph_lock(graph_id: str) -> threading.Lock:
+    with _locks_lock:
+        if graph_id not in _graph_locks:
+            _graph_locks[graph_id] = threading.Lock()
+        return _graph_locks[graph_id]
+
 
 EXTRACT_PROMPT = """
 You are an expert knowledge graph builder. Your task is to analyze the provided text and extract entities and relationships matching the target ontology schema.
@@ -419,28 +430,42 @@ class LocalZep:
                 "edges": {},
                 "episodes": {}
             }
-        try:
-            with open(filepath, 'r', encoding='utf-8') as f:
-                return json.load(f)
-        except Exception as e:
-            logger.error(f"Failed to load graph {graph_id}: {e}")
-            return {
-                "graph_id": graph_id,
-                "name": "",
-                "description": "",
-                "ontology": {},
-                "nodes": {},
-                "edges": {},
-                "episodes": {}
-            }
+        
+        lock = _get_graph_lock(graph_id)
+        with lock:
+            for attempt in range(3):
+                try:
+                    with open(filepath, 'r', encoding='utf-8') as f:
+                        return json.load(f)
+                except json.JSONDecodeError as e:
+                    if attempt < 2:
+                        logger.warning(f"JSON decode failed for {graph_id} (attempt {attempt+1}/3), retrying in 0.1s: {e}")
+                        time.sleep(0.1)
+                    else:
+                        logger.error(f"Failed to load graph {graph_id} after multiple attempts due to JSON corruption: {e}")
+                        raise
+                except Exception as e:
+                    logger.error(f"Unexpected error loading graph {graph_id}: {e}")
+                    raise
             
     def _save_graph(self, graph_id: str, graph: Dict[str, Any]):
         filepath = self._get_filepath(graph_id)
-        try:
-            with open(filepath, 'w', encoding='utf-8') as f:
-                json.dump(graph, f, ensure_ascii=False, indent=2)
-        except Exception as e:
-            logger.error(f"Failed to save graph {graph_id}: {e}")
+        lock = _get_graph_lock(graph_id)
+        with lock:
+            temp_filepath = filepath + ".tmp"
+            try:
+                with open(temp_filepath, 'w', encoding='utf-8') as f:
+                    json.dump(graph, f, ensure_ascii=False, indent=2)
+                os.replace(temp_filepath, filepath)
+            except Exception as e:
+                logger.error(f"Failed to save graph {graph_id} atomically: {e}")
+                if os.path.exists(temp_filepath):
+                    try:
+                        os.remove(temp_filepath)
+                    except Exception:
+                        pass
+                raise
+
             
     def _extract_and_merge(self, graph_id: str, graph: Dict[str, Any], text: str):
         ontology = graph.get("ontology")

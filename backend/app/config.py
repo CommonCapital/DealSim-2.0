@@ -39,6 +39,8 @@ class Config:
     LLM_API_KEY = os.environ.get('LLM_API_KEY')
     LLM_BASE_URL = os.environ.get('LLM_BASE_URL', 'https://api.openai.com/v1')
     LLM_MODEL_NAME = os.environ.get('LLM_MODEL_NAME', 'gpt-4o-mini')
+    LLM_TIMEOUT = float(os.environ.get('LLM_TIMEOUT', '60.0'))
+
     
     # Zep配置
     ZEP_API_KEY = os.environ.get('ZEP_API_KEY', 'local')
